@@ -1,0 +1,11 @@
+@startmindmap
+* System
+** Indexer
+*** Back Fill Contract Events (to get pools in dex)
+*** Poll Contract state (to get current pool data)
+**** Helper Contract (aggregate contract state)
+***** Func contract
+** Route builder
+*** build txn payload
+@endmindmap
+
