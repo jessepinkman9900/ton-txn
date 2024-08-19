@@ -8,6 +8,7 @@ import (
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
 	"log"
+	"math"
 	"math/big"
 )
 
@@ -68,9 +69,50 @@ func main() {
 	log.Printf("pool_data", pool_data)
 
 	// calculate swap
+	// 1 STON -> USDT
+	amount_in := big.NewInt(1000000000) // 1 STON - 9 decimals
+	amount_out := get_amount_out(pool_data, big.NewInt(0), amount_in, pool_data.reserve0, pool_data.reserve1)
+	log.Printf("1 STON -> USDT amount_out: %d", amount_out)
+	log.Printf("1 STON -> USDT amount_out scaled: %f", new(big.Float).Quo(new(big.Float).SetInt(amount_out), big.NewFloat(math.Pow10(6))))
+
+	// 1 USDT -> STON
+	amount_in = big.NewInt(1000000) // 1 USDT - 6 decimals
+	amount_out = get_amount_out(pool_data, big.NewInt(0), amount_in, pool_data.reserve1, pool_data.reserve0)
+	log.Printf("1 USDT -> STON amount_out: %d", amount_out)
+	log.Printf("1 USDT -> STON amount_out scaled: %f", new(big.Float).Quo(new(big.Float).SetInt(amount_out), big.NewFloat(math.Pow10(9))))
 
 	// build txn payload
 
+}
+
+func get_amount_out(pool_data PoolData, has_ref, amount_in, reserve_in, reserve_out *big.Int) *big.Int {
+	FEE_DIVIDER := big.NewInt(10000)
+
+	amount_in_with_fee := new(big.Int).Mul(amount_in, new(big.Int).Sub(FEE_DIVIDER, pool_data.lp_fee))
+	//log.Printf("amount_in_with_fee: %d", amount_in_with_fee)
+	base_out := new(big.Int).Div(new(big.Int).Mul(amount_in_with_fee, reserve_out), new(big.Int).Add(new(big.Int).Mul(reserve_in, FEE_DIVIDER), amount_in_with_fee))
+	//log.Printf("base_out: %d", base_out)
+
+	protocol_fee_out := big.NewInt(0)
+	ref_fee_out := big.NewInt(0)
+	if pool_data.protocol_fee.Cmp(big.NewInt(0)) > 0 {
+		protocol_fee_out = new(big.Int).Div(new(big.Int).Mul(base_out, pool_data.protocol_fee), FEE_DIVIDER)
+	}
+	//log.Printf("protocol_fee_out: %d", protocol_fee_out)
+
+	if has_ref.Cmp(big.NewInt(0)) == 0 && pool_data.ref_fee.Cmp(big.NewInt(0)) > 0 {
+		ref_fee_out = new(big.Int).Div(new(big.Int).Mul(base_out, pool_data.ref_fee), FEE_DIVIDER)
+	}
+	//log.Printf("ref_fee_out: %d", ref_fee_out)
+
+	base_out = new(big.Int).Sub(base_out, new(big.Int).Add(protocol_fee_out, ref_fee_out))
+	//log.Printf("base_out: %d", base_out)
+	if base_out.Cmp(big.NewInt(0)) < 0 {
+		base_out = big.NewInt(0)
+	}
+	//log.Printf("base_out: %d", base_out)
+
+	return base_out
 }
 
 func get_pool_data(ctx context.Context, api ton.APIClientWrapped, block *ton.BlockIDExt, pool_address *address.Address) (PoolData, error) {
@@ -94,13 +136,13 @@ func get_pool_data(ctx context.Context, api ton.APIClientWrapped, block *ton.Blo
 	log.Printf("token1_wallet_address: %s", token1_wallet_address)
 
 	lp_fee := pool_data.MustInt(4)
-	log.Printf("lp_fee: '%d", lp_fee)
+	log.Printf("lp_fee: %d", lp_fee)
 
 	protocol_fee := pool_data.MustInt(5)
-	log.Printf("protocol_fee: '%d", protocol_fee)
+	log.Printf("protocol_fee: %d", protocol_fee)
 
 	ref_fee := pool_data.MustInt(6)
-	log.Printf("ref_fee: '%d", ref_fee)
+	log.Printf("ref_fee: %d", ref_fee)
 
 	protocol_fee_address := pool_data.MustSlice(7).MustLoadAddr()
 	log.Printf("protocol_fee_address: %s", protocol_fee_address)
