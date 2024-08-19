@@ -57,7 +57,7 @@ func main() {
 		block.Shard,
 	)
 
-	// create pool
+	// get create pool msg
 
 	// get pool data
 	pool_address := address.MustParseAddr("EQBWjPASSjsgibEv3fGUCwSwFyUxLVFaywZzNmuBXPFOFfOG")
@@ -68,6 +68,8 @@ func main() {
 	log.Printf("pool_data", pool_data)
 
 	// calculate swap
+
+	// build txn payload
 
 }
 
