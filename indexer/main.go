@@ -14,16 +14,16 @@ import (
 )
 
 type PoolData struct {
-	reserve0                      *big.Int         // 0
-	reserve1                      *big.Int         // 1
+	reserve0                      *big.Int         // 0 coins
+	reserve1                      *big.Int         // 1 coins
 	token0_wallet_addr            *address.Address // 2
 	token1_wallet_addr            *address.Address // 3
 	lp_fee                        *big.Int         // 4 uint8
 	protocol_fee                  *big.Int         // 5 uint8
 	ref_fee                       *big.Int         // 6 uint8
 	protocol_fee_address          *address.Address // 7
-	collected_token0_protocol_fee *big.Int         // 8
-	collected_token1_protocol_fee *big.Int         // 9
+	collected_token0_protocol_fee *big.Int         // 8 coins
+	collected_token1_protocol_fee *big.Int         // 9 coins
 }
 
 func main() {
