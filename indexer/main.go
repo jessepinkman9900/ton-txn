@@ -3,11 +3,26 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
 	"log"
+	"math/big"
 )
+
+type PoolData struct {
+	reserve0                      *big.Int         // 0
+	reserve1                      *big.Int         // 1
+	token0_wallet_addr            *address.Address // 2
+	token1_wallet_addr            *address.Address // 3
+	lp_fee                        *big.Int         // 4 uint8
+	protocol_fee                  *big.Int         // 5 uint8
+	ref_fee                       *big.Int         // 6 uint8
+	protocol_fee_address          *address.Address // 7
+	collected_token0_protocol_fee *big.Int         // 8
+	collected_token1_protocol_fee *big.Int         // 9
+}
 
 func main() {
 	// setup connection
@@ -42,39 +57,72 @@ func main() {
 		block.Shard,
 	)
 
-	// get contract events
-	// dedust factory contract
-	addr := address.MustParseAddr("EQBfBWT7X2BHg9tXAxzhz2aKiNTU1tpt5NsiK0uSDW_YAJ67")
-	log.Print(addr.String())
-	//api.GetTransaction()
+	// create pool
 
-	// pool contract state
-	// dedust pool contract - EQDcm06RlreuMurm-yik9WbL6kI617B77OrSRF_ZjoCYFuny
-	pool_addr := address.MustParseAddr("EQDcm06RlreuMurm-yik9WbL6kI617B77OrSRF_ZjoCYFuny")
-
-	// get asssets
-	// assets, err := api.RunGetMethod(ctx, block, pool_addr, "get_assets")
-	// if err != nil {
-	// 	log.Printf("get_assets error: %s", err.Error())
-	// } else {
-	// 	log.Printf("pool: %s get_assets: numerator:%d denominator:%d", pool_addr.String(), hex.EncodeToString(assets.AsTuple()[0]), hex.EncodeToString(assets.AsTuple()[1].data))
-	// }
-
-	// get fee
-	fee, err := api.RunGetMethod(ctx, block, pool_addr, "get_trade_fee")
+	// get pool data
+	pool_address := address.MustParseAddr("EQBWjPASSjsgibEv3fGUCwSwFyUxLVFaywZzNmuBXPFOFfOG")
+	pool_data, err := get_pool_data(ctx, api, block, pool_address)
 	if err != nil {
-		log.Printf("get_trade_fee error: %s", err.Error())
-	} else {
-		log.Printf("pool: %s get_trade_fee: numerator:%d denominator:%d", pool_addr.String(), fee.AsTuple()[0], fee.AsTuple()[1])
+		log.Printf("ERROR fetching pool_data ", err.Error())
+	}
+	log.Printf("pool_data", pool_data)
+
+	// calculate swap
+
+}
+
+func get_pool_data(ctx context.Context, api ton.APIClientWrapped, block *ton.BlockIDExt, pool_address *address.Address) (PoolData, error) {
+	pool_data, err := api.RunGetMethod(ctx, block, pool_address, "get_pool_data")
+	if err != nil {
+		log.Printf("ERROR get_pool_data", err.Error())
+		return PoolData{}, fmt.Errorf("unableto fetch data from pool")
+	}
+	log.Printf("SUCCESS get_pool_data")
+
+	reserve0 := pool_data.MustInt(0)
+	log.Printf("reserve0: %d", reserve0)
+
+	reserve1 := pool_data.MustInt(1)
+	log.Printf("reserve1: %d", reserve1)
+
+	token0_wallet_address := pool_data.MustSlice(2).MustLoadAddr()
+	log.Printf("token0_wallet_address: %s", token0_wallet_address)
+
+	token1_wallet_address := pool_data.MustSlice(3).MustLoadAddr()
+	log.Printf("token1_wallet_address: %s", token1_wallet_address)
+
+	lp_fee := pool_data.MustInt(4)
+	log.Printf("lp_fee: '%d", lp_fee)
+
+	protocol_fee := pool_data.MustInt(5)
+	log.Printf("protocol_fee: '%d", protocol_fee)
+
+	ref_fee := pool_data.MustInt(6)
+	log.Printf("ref_fee: '%d", ref_fee)
+
+	protocol_fee_address := pool_data.MustSlice(7).MustLoadAddr()
+	log.Printf("protocol_fee_address: %s", protocol_fee_address)
+
+	collected_token0_protocol_fee := pool_data.MustInt(0)
+	log.Printf("collected_token0_protocol_fee: %d", collected_token0_protocol_fee)
+
+	collected_token1_protocol_fee := pool_data.MustInt(0)
+	log.Printf("collected_token1_protocol_fee: %d", collected_token1_protocol_fee)
+
+	pool_data_struct := PoolData{
+		reserve0:                      reserve0,
+		reserve1:                      reserve1,
+		token0_wallet_addr:            token0_wallet_address,
+		token1_wallet_addr:            token1_wallet_address,
+		lp_fee:                        lp_fee,
+		protocol_fee:                  protocol_fee,
+		ref_fee:                       ref_fee,
+		protocol_fee_address:          protocol_fee_address,
+		collected_token0_protocol_fee: collected_token0_protocol_fee,
+		collected_token1_protocol_fee: collected_token1_protocol_fee,
 	}
 
-	// get reserves
-	reserves, err := api.RunGetMethod(ctx, block, pool_addr, "get_reserves")
-	if err != nil {
-		log.Printf("get_reserves error: %s", err.Error())
-	} else {
-		log.Printf("pool: %s get_reserves: reserve0:%d reserve1:%d", pool_addr.String(), reserves.AsTuple()[0], reserves.AsTuple()[1])
-	}
+	return pool_data_struct, nil
 }
 
 // todo
