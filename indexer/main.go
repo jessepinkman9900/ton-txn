@@ -7,6 +7,7 @@ import (
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
+	"github.com/xssnick/tonutils-go/tvm/cell"
 	"log"
 	"math"
 	"math/big"
@@ -82,7 +83,31 @@ func main() {
 	log.Printf("1 USDT -> STON amount_out scaled: %f", new(big.Float).Quo(new(big.Float).SetInt(amount_out), big.NewFloat(math.Pow10(9))))
 
 	// build txn payload
+	routerv1_address := address.MustParseAddr("EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt")
+	op_code, _ := new(big.Int).SetString("25938561", 16)                                               // 0x25938561
+	wallet_token_out_addr := address.MustParseAddr("EQBO7JIbnU1WoNlGdgFtScJrObHXkBp-FT5mAz8UagiG9KQR") // usdt
+	to_addr := address.MustParseAddr("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c")               // 0 address
+	payload := cell.BeginCell().
+		MustStoreUInt(op_code.Uint64(), 32).
+		MustStoreAddr(wallet_token_out_addr).
+		MustStoreCoins(amount_out.Uint64()).
+		MustStoreAddr(to_addr).
+		MustStoreBoolBit(false). // ref_address
+		EndCell()
 
+	op_code, _ = new(big.Int).SetString("7362d09c", 16) // 0x7362d09c
+	jetton_amount := uint64(0)
+	from_address := address.MustParseAddr("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c") // 0 address
+	body := cell.BeginCell().
+		MustStoreUInt(op_code.Uint64(), 32).
+		MustStoreCoins(jetton_amount).
+		MustStoreAddr(from_address).
+		MustStoreBoolBit(true).
+		MustStoreRef(payload).
+		EndCell()
+	log.Printf("routerv1_address %s", routerv1_address)
+	log.Printf("txn body: %+v\n", body)
+	// todo: send payload on chain
 }
 
 func get_amount_out(pool_data PoolData, has_ref, amount_in, reserve_in, reserve_out *big.Int) *big.Int {
